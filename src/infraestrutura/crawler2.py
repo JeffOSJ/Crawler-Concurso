@@ -1,0 +1,65 @@
+import requests
+from bs4 import BeautifulSoup
+from domain.concurso import Concurso
+import asyncio
+from application.filtros import filtrar_concurso
+
+class CNBCrawler:
+    BASE_URL = "https://concursosnobrasil.com/concursos/ma/"
+
+    async def buscar_concursos(self):
+        print("[Crawler] Acessando site:", self.BASE_URL)
+
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(None, requests.get, self.BASE_URL)
+
+        if response.status_code != 200:
+            print(f"[Crawler] Erro ao acessar CNBC ({response.status_code})")
+            return []
+
+        soup = BeautifulSoup(response.text, "html.parser")
+        concursos_html = soup.select("tr td a")
+        print(f"[Crawler] Encontrados {len(concursos_html)} concursos na página")
+
+        concursos = []
+        for c in concursos_html:
+            orgao = c.text.strip()
+            link_edital = orgao.get("href") if orgao and orgao.get("href") else "Não informado"
+
+            if not orgao:
+                continue
+            
+            concurso = Concurso(
+                    orgao=orgao if orgao else "Não informado",
+                    vagas="",
+                    area="",
+                    link_edital=link_edital,
+                )
+            concursos.append(concurso)
+
+            # navigate to link_edital
+            # edital_response = await loop.run_in_executor(None, requests.get, link_edital)
+
+            # if edital_response.status_code == 200:
+            #     edital_soup = BeautifulSoup(edital_response.text, "html.parser")
+
+            #     paragrafos_edital = edital_soup.select("p")
+
+            #     concurso = Concurso(
+            #         orgao=orgao if orgao else "Não informado",
+            #         vagas="",
+            #         area="",
+            #         link_edital=link_edital,
+            #     )
+
+            #     for p in paragrafos_edital:
+            #         if filtrar_concurso(concurso, p.text):
+            #             concursos.append(concurso)
+            #             break
+
+            # else:
+            #     print(f"[Crawler] Erro ao acessar edital ({edital_response.status_code})")
+
+        return concursos
+    
+      
